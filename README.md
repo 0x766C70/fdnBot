@@ -1,6 +1,6 @@
 # fdnBot - FDN-Expert
 
-Botbot - Agent conversationnel expert en informatique et spécialiste de **FDN (French Data Network,
+Agent conversationnel expert en informatique et spécialiste de **FDN (French Data Network,
 fdn.fr)**, construit avec LangChain 1.x et le modèle Mistral. Sa recherche web est
 strictement limitée aux sites `*.fdn.fr`.
 
