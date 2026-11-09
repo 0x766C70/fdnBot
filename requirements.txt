@@ -5,4 +5,5 @@ httpx==0.28.1
 langchain==1.4.9
 langchain-mistralai==1.1.6
 langchain-tavily==0.2.18
+pypdf==6.13.3
 python-dotenv==1.2.4

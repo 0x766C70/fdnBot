@@ -191,6 +191,37 @@ class TestMemoireThread:
         assert captured["config"]["configurable"]["thread_id"].startswith("ephemeral-")
 
 
+class TestExtractionLiens:
+    """read_fdn_page doit exposer les URLs exactes des documents (*.fdn.fr)."""
+
+    def test_liens_resolus_et_documents_en_tete(self):
+        from fdn_bot.tools import _TextExtractor
+
+        ex = _TextExtractor("https://www.fdn.fr/asso/textes/")
+        ex.feed(
+            '<a href="/asso/nav/">Asso</a>'
+            '<a href="/assets/files/reglement.pdf">Règlement</a>'
+        )
+        text = ex.text
+        assert "https://www.fdn.fr/assets/files/reglement.pdf" in text
+        # les documents passent avant les liens de navigation
+        assert text.index("reglement.pdf") < text.index("/asso/nav/")
+
+    def test_liens_hors_fdn_ignores(self):
+        from fdn_bot.tools import _TextExtractor
+
+        ex = _TextExtractor("https://www.fdn.fr/")
+        ex.feed('<a href="https://evil.com/doc.pdf">x</a>')
+        assert ex.links == []
+
+    def test_detection_pdf(self):
+        from fdn_bot.tools import _is_pdf
+
+        assert _is_pdf(b"%PDF-1.7 ...", "application/octet-stream") is True
+        assert _is_pdf(b"<html>", "application/pdf") is True
+        assert _is_pdf(b"<html>", "text/html") is False
+
+
 class TestGardeFouDomaine:
     def test_autorise_fdn_fr(self):
         assert is_fdn_url("https://www.fdn.fr/adherer/")
