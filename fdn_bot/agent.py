@@ -8,6 +8,7 @@ alors l'historique complet, qui re-seme le thread au besoin.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any, Callable, Optional
 
 from langchain.agents import create_agent
@@ -95,6 +96,11 @@ def respond_with_meta(
     if question is None:
         return {"answer": "Posez-moi une question d'IT ou sur FDN.", "refused": True, "search_used": False}
 
+    # Le checkpointer exige un thread_id : sans fil fourni, thread éphémère
+    # (comportement stateless équivalent à l'absence de mémoire serveur).
+    if not thread_id:
+        thread_id = f"ephemeral-{uuid.uuid4()}"
+
     # Le garde-fou doit voir la memoire serveur du fil, pas seulement le
     # nouveau message : on lui presente l'etat du checkpointer + le message.
     prior_messages: list = []
@@ -111,19 +117,13 @@ def respond_with_meta(
         return {"answer": guard.REFUSAL, "refused": True, "search_used": False}
 
     agent = build_agent(include_search=classification.needs_fdn_facts)
-
-    if thread_id:
-        config = {
-            "recursion_limit": RECURSION_LIMIT,
-            "configurable": {"thread_id": thread_id},
-        }
-        # Instance qui connait deja le fil -> seul le nouveau message suffit.
-        payload = {"messages": messages[-1:]} if prior_messages else {"messages": messages}
-        result = agent.invoke(payload, config)
-    else:
-        result = agent.invoke(
-            {"messages": messages}, config={"recursion_limit": RECURSION_LIMIT}
-        )
+    config = {
+        "recursion_limit": RECURSION_LIMIT,
+        "configurable": {"thread_id": thread_id},
+    }
+    # Instance qui connait deja le fil -> seul le nouveau message suffit.
+    payload = {"messages": messages[-1:]} if prior_messages else {"messages": messages}
+    result = agent.invoke(payload, config)
 
     return {
         "answer": _extract_text(result["messages"][-1]),

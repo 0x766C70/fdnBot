@@ -21,12 +21,11 @@ from fdn_bot.llm import get_small_chat_model
 CLASSIFY_CONTEXT_TURNS = 6
 
 REFUSAL = (
-    "Je suis FDN-Expert, un agent spécialisé en informatique et sur "
-    "l'association FDN (fdn.fr). Votre question sort de mon périmètre, "
-    "je ne peux pas y répondre.\n\n"
-    "Vous pouvez me demander :\n"
-    "- des sujets d'IT générale : réseaux, IP, Linux, DNS, fibre, VPN...\n"
-    "- tout ce qui concerne FDN : offres, adhésion, services, documentation."
+    "*Remet une bière au comptoir et sourit* Ah, ça, malheureusement, ce n'est "
+    "pas mon rayon : ici, au bistro de FDN, on cause technique (réseaux, IP, Linux, "
+    "DNS, fibre, VPN...) et on parle de l'association (offres, adhésion, "
+    "services, documentation sur fdn.fr).\n\n"
+    "Repose-moi une question là-dessus, je te sors ça avec le sourire."
 )
 
 

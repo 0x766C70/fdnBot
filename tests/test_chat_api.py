@@ -176,7 +176,7 @@ class TestMemoireThread:
         assert "ancien fil" in seen_by_classifier
         assert "nouvelle question" in seen_by_classifier
 
-    def test_sans_thread_id_historique_complet(self, monkeypatch):
+    def test_sans_thread_id_thread_ephemere(self, monkeypatch):
         from langchain_core.messages import HumanMessage
         import fdn_bot.agent as agent_mod
 
@@ -186,8 +186,9 @@ class TestMemoireThread:
         agent_mod.respond_with_meta(
             messages, classify_fn=lambda m: guard.TopicClassification(in_scope=True)
         )
+        # sans thread_id fourni : historique complet, thread ephemere genere
         assert len(captured["payload"]["messages"]) == 2
-        assert "configurable" not in captured["config"]
+        assert captured["config"]["configurable"]["thread_id"].startswith("ephemeral-")
 
 
 class TestGardeFouDomaine:
