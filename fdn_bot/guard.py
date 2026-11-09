@@ -21,10 +21,11 @@ from fdn_bot.llm import get_small_chat_model
 CLASSIFY_CONTEXT_TURNS = 6
 
 REFUSAL = (
-    "*Remet une bière au comptoir et sourit* Ah, ça, malheureusement, ce n'est "
-    "pas mon rayon : ici, au bistro de FDN, on cause technique (réseaux, IP, Linux, "
-    "DNS, fibre, VPN...) et on parle de l'association (offres, adhésion, "
-    "services, documentation sur fdn.fr).\n\n"
+    "*Remet une bière au comptoir et sourit* Ici c'est BotBot qui répond, et "
+    "ça, malheureusement, ce n'est pas mon rayon : au bistro de FDN, on cause "
+    "technique (réseaux, IP, Linux, DNS, fibre, VPN...), association "
+    "(offres, adhésion, services, documentation sur fdn.fr) ou cartes des "
+    "boissons (cocktails, cafés, thés).\n\n"
     "Repose-moi une question là-dessus, je te sors ça avec le sourire."
 )
 
@@ -35,10 +36,12 @@ class TopicClassification(BaseModel):
     in_scope: bool = Field(
         description=(
             "True si la question porte sur l'informatique / l'IT (réseaux, "
-            "systèmes, web, programmation, télécoms, cybersécurité...) ou sur "
-            "FDN (l'association, ses offres, ses services), en tenant compte "
-            "du contexte du fil : une question de suivi sur un sujet IT ou "
-            "FDN abordé avant reste in_scope. False sinon."
+            "systèmes, web, programmation, télécoms, cybersécurité...), sur "
+            "FDN (l'association, ses offres, ses services), ou sur la "
+            "mixologie et les boissons de bar (cocktails, recettes, "
+            "dosages, cafés, thés), en tenant compte du contexte du fil : "
+            "une question de suivi sur un sujet autorisé abordé avant "
+            "reste in_scope. False sinon."
         )
     )
     needs_fdn_facts: bool = Field(
@@ -59,14 +62,16 @@ CLASSIFIER_PROMPT = (
     "Assistant) puis la dernière question à classer. Classe cette question "
     "strictement :\n"
     "- in_scope : porte-t-elle sur l'IT (réseaux, IP, Linux, DNS, fibre, "
-    "VPN, programmation, cybersécurité, matériel...) ou sur FDN et son site "
-    "fdn.fr (offres, adhésion, services, actualités) ? Une salutation, une "
-    "formule de politesse ou un suivi d'un sujet IT/FDN du fil reste "
-    "in_scope. Sois strict : cuisine, sport, météo, politique "
-    "hors-numérique, médecine, culture générale -> in_scope=False.\n"
+    "VPN, programmation, cybersécurité, matériel...), sur FDN et son site "
+    "fdn.fr (offres, adhésion, services, actualités), ou sur la mixologie "
+    "et les boissons de bar (cocktails, recettes, dosages, cafés, thés) ? "
+    "Une salutation, une formule de politesse ou un suivi d'un sujet "
+    "autorisé du fil reste in_scope. Sois strict : cuisine, sport, météo, "
+    "politique hors-numérique, médecine, culture générale -> in_scope=False.\n"
     "- needs_fdn_facts : la réponse exige-t-elle des informations précises "
     "et à jour du site fdn.fr ? Pour un suivi d'un fil qui porte sur FDN, "
-    "réponds needs_fdn_facts=True. Pour l'IT générale, réponds False."
+    "réponds needs_fdn_facts=True. Pour l'IT générale et la mixologie, "
+    "réponds False."
 )
 
 

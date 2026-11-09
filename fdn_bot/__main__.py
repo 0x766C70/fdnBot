@@ -14,7 +14,7 @@ from fdn_bot.agent import respond
 
 
 def main() -> int:
-    print("FDN-Expert - agent expert IT / FDN (fdn.fr). Tapez 'quit' pour sortir.")
+    print("BotBot - agent expert IT / FDN (fdn.fr). Tapez 'quit' pour sortir.")
     thread_id = f"cli-{uuid.uuid4()}"
     history: list = []
     while True:
@@ -30,7 +30,7 @@ def main() -> int:
         # serveur aurait redemarre (CLI locale : le process vit, le fil vit).
         answer = respond(history, thread_id=thread_id)
         history.append(AIMessage(content=answer))
-        print(f"\nFDN-Expert > {answer}")
+        print(f"\nBotBot > {answer}")
     return 0
 
 

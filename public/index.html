@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FDN-Expert</title>
+<title>BotBot</title>
 <style>
   :root {
     --bg: #101418; --panel: #1a2129; --border: #2a3542;
@@ -51,7 +51,7 @@
 </head>
 <body>
 <header>
-  <h1>FDN-Expert</h1>
+  <h1>BotBot</h1>
   <p>Agent expert IT, sp&eacute;cialiste de FDN &mdash; recherche limit&eacute;e &agrave; *.fdn.fr</p>
 </header>
 <div id="chat"></div>
@@ -73,7 +73,7 @@ function addMsg(role, text, isError, searchBadge) {
   div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
   const r = document.createElement('div');
   r.className = 'role';
-  r.textContent = role === 'user' ? 'Vous' : 'FDN-Expert';
+  r.textContent = role === 'user' ? 'Vous' : 'BotBot';
   if (searchBadge) {
     const badge = document.createElement('span');
     badge.className = 'search-badge';
@@ -96,7 +96,7 @@ form.addEventListener('submit', async (e) => {
   send.disabled = true;
   history.push({ role: 'user', content: text });
   addMsg('user', text);
-  addMsg('bot', 'FDN-Expert réfléchit...');
+  addMsg('bot', 'BotBot réfléchit...');
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',

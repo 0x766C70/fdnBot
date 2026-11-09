@@ -39,7 +39,7 @@ def build_agent(include_search: bool = True):
         tools,
         system_prompt=SYSTEM_PROMPT,
         checkpointer=CHECKPOINTER,
-        name="fdn_expert",
+        name="botbot",
     )
 
 

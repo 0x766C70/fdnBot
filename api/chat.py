@@ -84,7 +84,7 @@ def index() -> FileResponse:
 
 @app.get("/api/chat")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "fdnBot", "agent": "fdn_expert"}
+    return {"status": "ok", "service": "fdnBot", "agent": "botbot"}
 
 
 @app.post("/api/chat")

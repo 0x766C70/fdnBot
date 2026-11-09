@@ -269,7 +269,7 @@ class TestRoutesFastApi:
     def test_index_sert_l_interface(self):
         r = self._request("GET", "/")
         assert r.status_code == 200
-        assert "FDN-Expert" in r.text
+        assert "BotBot" in r.text
 
     def test_chat_requete_invalide(self):
         r = self._request("POST", "/api/chat", json={"messages": []})
