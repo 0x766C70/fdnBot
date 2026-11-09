@@ -7,14 +7,13 @@ from __future__ import annotations
 
 import sys
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
-from fdn_bot.agent import build_agent
+from fdn_bot.agent import respond
 
 
 def main() -> int:
     print("FDN-Expert - agent expert IT / FDN (fdn.fr). Tapez 'quit' pour sortir.")
-    agent = build_agent()
     history: list = []
     while True:
         try:
@@ -25,9 +24,8 @@ def main() -> int:
         if not question or question.lower() in {"quit", "exit", "q"}:
             break
         history.append(HumanMessage(content=question))
-        result = agent.invoke({"messages": history}, config={"recursion_limit": 25})
-        answer = result["messages"][-1].content
-        history = result["messages"]
+        answer = respond(history)
+        history.append(AIMessage(content=answer))
         print(f"\nFDN-Expert > {answer}")
     return 0
 

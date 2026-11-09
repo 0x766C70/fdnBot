@@ -16,7 +16,37 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "api"))
 
+from fdn_bot import guard
+from fdn_bot.agent import respond
 from fdn_bot.tools import is_fdn_url  # noqa: E402
+
+
+class TestGardeFou:
+    """Contrôle de périmètre et d'outillage, sans appel réseau."""
+
+    def test_refus_hors_perimetre(self):
+        from langchain_core.messages import HumanMessage
+
+        def off_topic(question: str) -> guard.TopicClassification:
+            return guard.TopicClassification(in_scope=False)
+
+        answer = respond([HumanMessage(content="recette des crepes")], classify_fn=off_topic)
+        assert answer == guard.REFUSAL
+
+    def test_derniere_question_extraite(self):
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        messages = [
+            HumanMessage(content="premiere question"),
+            AIMessage(content="reponse"),
+            HumanMessage(content="derniere question"),
+        ]
+        assert guard.last_question(messages) == "derniere question"
+        assert guard.last_question([]) is None
+
+    def test_classification_schema_defauts(self):
+        c = guard.TopicClassification(in_scope=True)
+        assert c.needs_fdn_facts is False
 
 
 class TestGardeFouDomaine:
@@ -64,11 +94,11 @@ class TestConversionApiChat:
             chat._messages_from_payload({"messages": []})
 
     def test_extraction_texte(self):
-        import chat
+        from fdn_bot.agent import _extract_text
         from langchain_core.messages import HumanMessage
 
-        assert chat._extract_text(HumanMessage(content="ok")) == "ok"
-        assert chat._extract_text(HumanMessage(content=[{"text": "a"}, {"text": "b"}])) == "ab"
+        assert _extract_text(HumanMessage(content="ok")) == "ok"
+        assert _extract_text(HumanMessage(content=[{"text": "a"}, {"text": "b"}])) == "ab"
 
 
 class TestRoutesFastApi:

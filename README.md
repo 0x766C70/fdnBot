@@ -39,6 +39,17 @@ L'agent est assemblé avec `create_agent` (API LangChain 1.x) autour de deux out
 Le prompt système impose de sourcer toute réponse sur FDN vers fdn.fr et de
 citer les URLs consultées.
 
+## Garde-fous (périmètre et usage des outils)
+
+Avant chaque question, un contrôle léger (`fdn_bot/guard.py`, Mistral Small,
+sortie structurée) décide :
+
+1. **Périmètre** : si la question n'est ni de l'IT ni en rapport avec FDN,
+   l'agent renvoie un refus immédiat, sans solliciter le modèle principal.
+2. **Outillage** : les outils de recherche `*.fdn.fr` ne sont fournis à l'agent
+   que si la question exige des faits précis propres à FDN. Pour l'IT générale,
+   l'agent répond directement, sans appel Tavily — plus rapide et plus économe.
+
 ## Développement local
 
 ```bash

@@ -21,10 +21,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse  # noqa: E402
-from pydantic import BaseModel, Field  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 
-from fdn_bot.agent import build_agent  # noqa: E402
+from fdn_bot.agent import respond  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage  # noqa: E402
 
 MAX_HISTORY = 20
@@ -70,17 +70,6 @@ def _messages_from_payload(payload: dict[str, Any]) -> list[Any]:
     return messages[-MAX_HISTORY:]
 
 
-def _extract_text(message: Any) -> str:
-    content = getattr(message, "content", "")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return "".join(
-            block.get("text", "") for block in content if isinstance(block, dict)
-        )
-    return str(content)
-
-
 @app.get("/")
 def index() -> FileResponse:
     if not INDEX_HTML.exists():
@@ -102,8 +91,6 @@ def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        agent = build_agent()
-        result = agent.invoke({"messages": messages}, config={"recursion_limit": 25})
-        return ChatResponse(answer=_extract_text(result["messages"][-1]))
+        return ChatResponse(answer=respond(messages))
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Erreur de l'agent : {exc}") from exc
