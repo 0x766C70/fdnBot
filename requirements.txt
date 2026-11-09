@@ -1,0 +1,7 @@
+# Dépendances pour le runtime Python de Vercel (Python 3.12).
+# Le développement local utilise uv avec pyproject.toml.
+httpx==0.28.1
+langchain==1.4.9
+langchain-mistralai==1.1.6
+langchain-tavily==0.2.18
+python-dotenv==1.2.4
