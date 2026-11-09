@@ -21,7 +21,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from fdn_bot.agent import build_agent  # noqa: E402
@@ -45,6 +45,12 @@ class ChatResponse(BaseModel):
 
 
 app = FastAPI(title="fdnBot", description="Agent expert IT / FDN (fdn.fr)")
+
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Any, exc: HTTPException) -> JSONResponse:
+    """Erreurs au format {"error": ...} compris par le frontend."""
+    return JSONResponse(status_code=exc.status_code, content={"error": str(exc.detail)})
 
 
 def _messages_from_payload(payload: dict[str, Any]) -> list[Any]:

@@ -92,7 +92,7 @@ form.addEventListener('submit', async (e) => {
       body: JSON.stringify({ messages: history }),
     });
     const data = await res.json();
-    const answer = data.answer || data.error || 'Erreur inconnue.';
+    const answer = data.answer || data.error || data.detail || 'Erreur inconnue.';
     chat.lastChild.querySelector('.body').textContent = answer;
     history.push({ role: 'assistant', content: answer });
   } catch (err) {
