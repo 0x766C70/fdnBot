@@ -42,10 +42,16 @@ citer les URLs consultées.
 ## Développement local
 
 ```bash
-uv sync
-cp .env.example .env   # renseigner MISTRAL_API_KEY et TAVILY_API_KEY
-uv run python -m fdn_bot        # CLI interactive
+uv sync                        # deps de production + dev (tests, uvicorn)
+cp .env.example .env          # renseigner MISTRAL_API_KEY et TAVILY_API_KEY
+uv run python -m fdn_bot       # CLI interactive
+uv run uvicorn api.chat:app    # API FastAPI locale sur http://127.0.0.1:8000
+uv run pytest tests/ -q        # tests
 ```
+
+Les dépendances du cours LangChain sont dans le group `course` (non installé
+par défaut, ni sur Vercel qui n'installe que `[project] dependencies`) :
+`uv sync --group course`.
 
 ## Appel de l'API en direct
 

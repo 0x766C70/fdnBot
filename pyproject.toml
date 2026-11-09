@@ -1,45 +1,50 @@
 [project]
 name = "fdnBot"
 version = "0.1.0"
-description = "BotFDN"
+description = "BotFDN - agent expert IT / FDN, recherche web limitee a *.fdn.fr"
 readme = "README.md"
 authors = [
     { name = "vlp", email = "vlp@fdn.fr" }
 ]
 requires-python = ">=3.12"
+# Dependances installees en production (Vercel : `uv sync --no-dev`)
 dependencies = [
     "fastapi>=0.115.0",
+    "httpx>=0.27.0",
     "langchain>=1.3.10",
-    "langchain-openai>=1.7.3",
-    "python-dotenv>=1.2.0",
-    "ipykernel>=7.1.0",
-    "langchain-anthropic>=1.4.6",
-    "langchain-model-profiles>=0.0.4",
-    "langchain-tavily>=0.2.13",
-    "tavily-python>=0.7.13",
-    "tavily>=1.1.0",
-    "langchain-community>=0.4.1",
-    "pypdf>=6.13.3",
-    "langchain-text-splitters>=1.1.2",
-    "langchain-mcp-adapters>=0.1.13",
-    "langgraph>=1.0.3",
-    "langgraph-cli>=0.4.9",
-    "langgraph-api>=0.5.37",
-    "ipywidgets>=8.1.8",
-    "sounddevice>=0.5.3",
-    "scipy>=1.16.3",
-    "langchain-google-vertexai>=3.0.3",
-    "langchain-google-genai>=3.1.0",
-    "langsmith>=0.14.14",
-    "langchain-core>=1.3.3",
-    "jupyterlab>=4.5.9",
-    "mcp>=1.21.1,<2",
-    "mcp_server_time<=2026.7.10",
     "langchain-mistralai>=1.1.6",
+    "langchain-tavily>=0.2.13",
+    "python-dotenv>=1.2.0",
 ]
 
 [dependency-groups]
 dev = ["pytest>=8.0", "uvicorn>=0.30.0"]
+# Environnement de cours LangChain : NON installe sur Vercel ni par defaut.
+# Local : uv sync --group course
+course = [
+    "ipykernel>=7.1.0",
+    "ipywidgets>=8.1.8",
+    "jupyterlab>=4.5.9",
+    "langchain-anthropic>=1.4.6",
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=3.1.0",
+    "langchain-google-vertexai>=3.0.3",
+    "langchain-mcp-adapters>=0.1.13",
+    "langchain-model-profiles>=0.0.4",
+    "langchain-openai>=1.7.3",
+    "langchain-text-splitters>=1.1.2",
+    "langgraph>=1.0.3",
+    "langgraph-api>=0.5.37",
+    "langgraph-cli>=0.4.9",
+    "langsmith>=0.14.14",
+    "mcp>=1.21.1,<2",
+    "mcp_server_time<=2026.7.10",
+    "pypdf>=6.13.3",
+    "scipy>=1.16.3",
+    "sounddevice>=0.5.3",
+    "tavily>=1.1.0",
+    "tavily-python>=0.7.13",
+]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
