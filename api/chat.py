@@ -1,36 +1,60 @@
-"""Fonction serverless Vercel : endpoint chat de l'agent FDN.
+"""Application FastAPI de l'agent FDN, déployable sur Vercel (runtime Python).
 
-GET  /api/chat  -> health check
-POST /api/chat  -> {"messages": [{"role": "user"|"assistant", "content": "..."}]}
-                   renvoie {"answer": "..."}
+L'app est l'unique entrypoint du projet, déclaré dans pyproject.toml via :
+    [tool.vercel]
+    entrypoint = "api.chat:app"
+
+Routes :
+    GET  /           -> interface de chat (public/index.html)
+    GET  /api/chat   -> health check
+    POST /api/chat   -> {"messages": [{"role": "user"|"assistant", "content": "..."}]}
 """
 
 from __future__ import annotations
 
-import json
 import sys
-from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+from typing import Any
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
+
 from fdn_bot.agent import build_agent  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage  # noqa: E402
 
 MAX_HISTORY = 20
+INDEX_HTML = _ROOT / "public" / "index.html"
 
 
-def _messages_from_payload(payload: dict) -> list:
+class ChatMessage(BaseModel):
+    role: str = "user"
+    content: str = ""
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    answer: str
+
+
+app = FastAPI(title="fdnBot", description="Agent expert IT / FDN (fdn.fr)")
+
+
+def _messages_from_payload(payload: dict[str, Any]) -> list[Any]:
     """Convertit l'historique JSON client en messages LangChain."""
     messages = []
     for item in payload.get("messages", []):
-        role = item.get("role", "user")
         content = (item.get("content") or "").strip()
         if not content:
             continue
-        if role == "assistant":
+        if item.get("role") == "assistant":
             messages.append(AIMessage(content=content))
         else:
             messages.append(HumanMessage(content=content))
@@ -40,7 +64,7 @@ def _messages_from_payload(payload: dict) -> list:
     return messages[-MAX_HISTORY:]
 
 
-def _extract_text(message) -> str:  # noqa: ANN001
+def _extract_text(message: Any) -> str:
     content = getattr(message, "content", "")
     if isinstance(content, str):
         return content
@@ -51,37 +75,29 @@ def _extract_text(message) -> str:  # noqa: ANN001
     return str(content)
 
 
-class handler(BaseHTTPRequestHandler):
+@app.get("/")
+def index() -> FileResponse:
+    if not INDEX_HTML.exists():
+        raise HTTPException(status_code=404, detail="Interface introuvable.")
+    return FileResponse(INDEX_HTML)
 
-    def _send_json(self, status: int, data: dict) -> None:
-        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802
-        self._send_json(200, {"status": "ok", "service": "fdnBot", "agent": "fdn_expert"})
+@app.get("/api/chat")
+def health() -> dict[str, str]:
+    return {"status": "ok", "service": "fdnBot", "agent": "fdn_expert"}
 
-    def do_POST(self) -> None:  # noqa: N802
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-            payload = json.loads(self.rfile.read(length) or b"{}")
-            messages = _messages_from_payload(payload)
-        except (ValueError, json.JSONDecodeError) as exc:
-            self._send_json(400, {"error": f"Requête invalide : {exc}"})
-            return
 
-        try:
-            agent = build_agent()
-            result = agent.invoke(
-                {"messages": messages}, config={"recursion_limit": 25}
-            )
-            answer = _extract_text(result["messages"][-1])
-            self._send_json(200, {"answer": answer})
-        except Exception as exc:  # noqa: BLE001
-            self._send_json(500, {"error": f"Erreur de l'agent : {exc}"})
+@app.post("/api/chat")
+def chat(request: ChatRequest) -> ChatResponse:
+    payload = {"messages": [m.model_dump() for m in request.messages]}
+    try:
+        messages = _messages_from_payload(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    def log_message(self, format: str, *args) -> None:  # noqa: A002, N802
-        pass
+    try:
+        agent = build_agent()
+        result = agent.invoke({"messages": messages}, config={"recursion_limit": 25})
+        return ChatResponse(answer=_extract_text(result["messages"][-1]))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Erreur de l'agent : {exc}") from exc

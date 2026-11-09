@@ -15,11 +15,12 @@ fdnBot/
 │   │                     # + read_fdn_page (lecture, garde-fou *.fdn.fr)
 │   └── __main__.py       # CLI locale interactive
 ├── api/
-│   └── chat.py           # Fonction serverless Vercel (POST /api/chat)
+│   └── chat.py           # App FastAPI : entrypoint unique Vercel
+│                          # GET / (UI) + GET/POST /api/chat
 ├── public/
 │   └── index.html        # Mini interface de chat (statique)
 ├── requirements.txt      # Dépendances pour le runtime Vercel (Python 3.12)
-├── vercel.json           # maxDuration 60s + inclusion du package fdn_bot
+├── vercel.json           # maxDuration 60s (fonction unique api/chat.py)
 ├── pyproject.toml        # Dépendances uv pour le développement local
 └── .env.example
 ```
@@ -58,9 +59,17 @@ Réponse : `{"answer": "..."}`. Un `GET /api/chat` sert de health check.
 
 ## Déploiement Vercel
 
+Le projet est déployé comme application Python mono-entrypoint (pattern
+officiel Vercel) : l'app FastAPI `app` de `api/chat.py` reçoit toutes les
+requêtes. L'entrypoint est déclaré dans `pyproject.toml` :
+
+```toml
+[tool.vercel]
+entrypoint = "api.chat:app"
+```
+
 1. Pousser ce repository sur GitHub.
-2. Sur Vercel : **Add New Project** -> importer le repo. Le runtime Python est
-   détecté automatiquement (fonctions `api/*.py` + `requirements.txt`).
+2. Sur Vercel : **Add New Project** -> importer le repo (Root Directory : racine).
 3. Dans **Settings -> Environment Variables**, ajouter :
    - `MISTRAL_API_KEY` (requis)
    - `TAVILY_API_KEY` (requis)

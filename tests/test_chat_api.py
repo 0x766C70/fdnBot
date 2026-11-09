@@ -69,3 +69,40 @@ class TestConversionApiChat:
 
         assert chat._extract_text(HumanMessage(content="ok")) == "ok"
         assert chat._extract_text(HumanMessage(content=[{"text": "a"}, {"text": "b"}])) == "ab"
+
+
+class TestRoutesFastApi:
+    """Tests des routes de l'app (sans clé API : pas d'appel à l'agent)."""
+
+    def _request(self, method: str, path: str, **kwargs) -> "httpx.Response":
+        import asyncio
+
+        import httpx
+        from httpx import ASGITransport
+        from chat import app
+
+        async def run() -> httpx.Response:
+            async with httpx.AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://testserver"
+            ) as client:
+                return await client.request(method, path, **kwargs)
+
+        return asyncio.run(run())
+
+    def test_health(self):
+        r = self._request("GET", "/api/chat")
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+
+    def test_index_sert_l_interface(self):
+        r = self._request("GET", "/")
+        assert r.status_code == 200
+        assert "FDN-Expert" in r.text
+
+    def test_chat_requete_invalide(self):
+        r = self._request("POST", "/api/chat", json={"messages": []})
+        assert r.status_code == 400
+        r = self._request(
+            "POST", "/api/chat", json={"messages": [{"role": "assistant", "content": "x"}]}
+        )
+        assert r.status_code == 400
