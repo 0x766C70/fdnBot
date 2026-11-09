@@ -24,7 +24,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from fdn_bot.agent import respond  # noqa: E402
+from fdn_bot.agent import respond_with_meta  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage  # noqa: E402
 
 MAX_HISTORY = 20
@@ -42,6 +42,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
+    # Indique à l'interface si l'agent a réellement consulté fdn.fr
+    search_used: bool = False
 
 
 app = FastAPI(title="fdnBot", description="Agent expert IT / FDN (fdn.fr)")
@@ -91,6 +93,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        return ChatResponse(answer=respond(messages))
+        meta = respond_with_meta(messages)
+        return ChatResponse(answer=meta["answer"], search_used=meta["search_used"])
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Erreur de l'agent : {exc}") from exc

@@ -15,6 +15,7 @@ from langchain_tavily import TavilySearch
 
 ALLOWED_DOMAINS = ["fdn.fr", "www.fdn.fr"]
 MAX_PAGE_CHARS = 20_000
+SEARCH_TOOL_NAME = "search_on_fdn"
 
 
 def is_fdn_url(url: str) -> bool:
@@ -29,7 +30,7 @@ def is_fdn_url(url: str) -> bool:
 def build_search_tool() -> TavilySearch:
     """Recherche web Tavily restreinte au domaine fdn.fr (et ses sous-domaines)."""
     return TavilySearch(
-        name="search_on_fdn",
+        name=SEARCH_TOOL_NAME,
         description=(
             "Recherche sur le web, restreinte aux sites *.fdn.fr (site officiel de "
             "l'association FDN). Une requête en français fonctionne mieux, par "

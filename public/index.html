@@ -42,6 +42,11 @@
   }
   button:disabled { opacity: .5; cursor: wait; }
   .error { color: #f0a0a0; }
+  .search-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: .66rem;
+    border: 1px solid var(--accent); color: var(--accent); border-radius: 10px;
+    vertical-align: middle;
+  }
 </style>
 </head>
 <body>
@@ -61,12 +66,18 @@ const input = document.getElementById('input');
 const send = document.getElementById('send');
 const history = [];
 
-function addMsg(role, text, isError) {
+function addMsg(role, text, isError, searchBadge) {
   const div = document.createElement('div');
   div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
   const r = document.createElement('div');
   r.className = 'role';
   r.textContent = role === 'user' ? 'Vous' : 'FDN-Expert';
+  if (searchBadge) {
+    const badge = document.createElement('span');
+    badge.className = 'search-badge';
+    badge.textContent = 'sources fdn.fr';
+    r.appendChild(badge);
+  }
   const b = document.createElement('div');
   b.className = 'body' + (isError ? ' error' : '');
   b.textContent = text;
@@ -83,8 +94,7 @@ form.addEventListener('submit', async (e) => {
   send.disabled = true;
   history.push({ role: 'user', content: text });
   addMsg('user', text);
-  addMsg('bot', 'Recherche sur fdn.fr en cours...');
-  chat.lastChild.setAttribute('data-pending', '1');
+  addMsg('bot', 'FDN-Expert réfléchit...');
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -93,12 +103,26 @@ form.addEventListener('submit', async (e) => {
     });
     const data = await res.json();
     const answer = data.answer || data.error || data.detail || 'Erreur inconnue.';
-    chat.lastChild.querySelector('.body').textContent = answer;
-    history.push({ role: 'assistant', content: answer });
+    history.push({ role: 'assistant', content: data.answer || '' });
+    if (data.answer) {
+      const r = chat.lastChild.querySelector('.role');
+      if (data.search_used) {
+        const badge = document.createElement('span');
+        badge.className = 'search-badge';
+        badge.textContent = 'sources fdn.fr';
+        r.appendChild(badge);
+      }
+      chat.lastChild.querySelector('.body').textContent = answer;
+    } else {
+      // erreur : on n'insere pas la reponse dans l'historique
+      history.pop();
+      chat.lastChild.querySelector('.body').textContent = answer;
+      chat.lastChild.querySelector('.body').classList.add('error');
+    }
   } catch (err) {
+    history.pop();
     chat.lastChild.querySelector('.body').textContent = 'Erreur: ' + err.message;
     chat.lastChild.querySelector('.body').classList.add('error');
-    history.pop();
   } finally {
     send.disabled = false;
     input.focus();

@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "api"))
 
 from fdn_bot import guard
-from fdn_bot.agent import respond
+from fdn_bot.agent import respond_with_meta
 from fdn_bot.tools import is_fdn_url  # noqa: E402
 
 
@@ -27,11 +27,28 @@ class TestGardeFou:
     def test_refus_hors_perimetre(self):
         from langchain_core.messages import HumanMessage
 
-        def off_topic(question: str) -> guard.TopicClassification:
+        def off_topic(messages: list) -> guard.TopicClassification:
             return guard.TopicClassification(in_scope=False)
 
-        answer = respond([HumanMessage(content="recette des crepes")], classify_fn=off_topic)
-        assert answer == guard.REFUSAL
+        meta = respond_with_meta(
+            [HumanMessage(content="recette des crepes")], classify_fn=off_topic
+        )
+        assert meta["answer"] == guard.REFUSAL
+        assert meta["refused"] is True
+        assert meta["search_used"] is False
+
+    def test_transcript_du_fil(self):
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        messages = [
+            HumanMessage(content="Quelle est l'offre fibre ?"),
+            AIMessage(content="Reponse sur la fibre."),
+            HumanMessage(content="et le prix ?"),
+        ]
+        transcript = guard._transcript(messages)
+        assert "offre fibre" in transcript
+        assert "et le prix ?" in transcript
+        assert "User :" in transcript and "Assistant :" in transcript
 
     def test_derniere_question_extraite(self):
         from langchain_core.messages import AIMessage, HumanMessage
@@ -47,6 +64,56 @@ class TestGardeFou:
     def test_classification_schema_defauts(self):
         c = guard.TopicClassification(in_scope=True)
         assert c.needs_fdn_facts is False
+
+
+class TestSearchUsed:
+    """L'indicateur search_used reflete les appels d'outils réels."""
+
+    @staticmethod
+    def _fake_agent(monkeypatch, tool_calls):
+        from langchain_core.messages import AIMessage
+
+        class FakeResult:
+            def __init__(self, messages):
+                self._messages = messages
+
+        class FakeAgent:
+            def invoke(self, state, config=None):
+                last = AIMessage(content="reponse factice")
+                if tool_calls:
+                    last.tool_calls = [
+                        {"name": "search_on_fdn", "args": {}, "id": "1"}
+                    ]
+                return {"messages": [last]}
+
+        monkeypatch.setattr("fdn_bot.agent.build_agent", lambda **kw: FakeAgent())
+
+    def test_avec_appel_outil(self, monkeypatch):
+        from langchain_core.messages import HumanMessage
+        import fdn_bot.agent as agent_mod
+
+        def fdn_topic(messages: list) -> guard.TopicClassification:
+            return guard.TopicClassification(in_scope=True, needs_fdn_facts=True)
+
+        self._fake_agent(monkeypatch, tool_calls=True)
+        meta = agent_mod.respond_with_meta(
+            [HumanMessage(content="offre fibre FDN ?")], classify_fn=fdn_topic
+        )
+        assert meta["search_used"] is True
+        assert meta["refused"] is False
+
+    def test_sans_appel_outil(self, monkeypatch):
+        from langchain_core.messages import HumanMessage
+        import fdn_bot.agent as agent_mod
+
+        def it_topic(messages: list) -> guard.TopicClassification:
+            return guard.TopicClassification(in_scope=True, needs_fdn_facts=False)
+
+        self._fake_agent(monkeypatch, tool_calls=False)
+        meta = agent_mod.respond_with_meta(
+            [HumanMessage(content="c'est quoi un VLAN ?")], classify_fn=it_topic
+        )
+        assert meta["search_used"] is False
 
 
 class TestGardeFouDomaine:
