@@ -70,14 +70,15 @@ class TestSearchUsed:
     """L'indicateur search_used reflete les appels d'outils réels."""
 
     @staticmethod
-    def _fake_agent(monkeypatch, tool_calls):
+    def _fake_agent(monkeypatch, tool_calls, existing_state=None):
         from langchain_core.messages import AIMessage
 
-        class FakeResult:
-            def __init__(self, messages):
-                self._messages = messages
-
         class FakeAgent:
+            def get_state(self, config):
+                class State:
+                    values = existing_state or {}
+                return State()
+
             def invoke(self, state, config=None):
                 last = AIMessage(content="reponse factice")
                 if tool_calls:
@@ -114,6 +115,79 @@ class TestSearchUsed:
             [HumanMessage(content="c'est quoi un VLAN ?")], classify_fn=it_topic
         )
         assert meta["search_used"] is False
+
+
+class TestMemoireThread:
+    """Memoire serveur : thread_id -> checkpointer InMemorySaver."""
+
+    @staticmethod
+    def _capture_agent(monkeypatch, existing_state, captured):
+        class FakeAgent:
+            def get_state(self, config):
+                class State:
+                    values = existing_state or {}
+                return State()
+
+            def invoke(self, state, config=None):
+                captured["payload"] = state
+                captured["config"] = config
+                from langchain_core.messages import AIMessage
+                return {"messages": [AIMessage(content="ok")]}
+
+        monkeypatch.setattr("fdn_bot.agent.build_agent", lambda **kw: FakeAgent())
+
+    def test_nouveau_thread_historique_complet(self, monkeypatch):
+        from langchain_core.messages import HumanMessage
+        import fdn_bot.agent as agent_mod
+
+        captured = {}
+        self._capture_agent(monkeypatch, {}, captured)
+        messages = [HumanMessage(content="q1"), HumanMessage(content="q2")]
+        agent_mod.respond_with_meta(messages, thread_id="t1", classify_fn=lambda m: guard.TopicClassification(in_scope=True))
+        # thread inconnu du checkpointer : l'historique complet re-seme le fil
+        assert len(captured["payload"]["messages"]) == 2
+        assert captured["config"]["configurable"]["thread_id"] == "t1"
+
+    def test_thread_connaisseur_dernier_message_seulement(self, monkeypatch):
+        from langchain_core.messages import AIMessage, HumanMessage
+        import fdn_bot.agent as agent_mod
+
+        captured = {}
+        self._capture_agent(
+            monkeypatch, {"messages": [HumanMessage(content="ancien fil")]}, captured
+        )
+        seen_by_classifier = []
+
+        def classifier(messages: list) -> guard.TopicClassification:
+            seen_by_classifier.extend(m.content for m in messages)
+            return guard.TopicClassification(in_scope=True)
+
+        messages = [
+            HumanMessage(content="question ancienne"),
+            AIMessage(content="reponse ancienne"),
+            HumanMessage(content="nouvelle question"),
+        ]
+        agent_mod.respond_with_meta(messages, thread_id="t2", classify_fn=classifier)
+        # thread deja connu : un seul message envoye a l'agent (le dernier)
+        assert len(captured["payload"]["messages"]) == 1
+        assert captured["payload"]["messages"][0].content == "nouvelle question"
+        assert captured["config"]["configurable"]["thread_id"] == "t2"
+        # et le garde-fou a vu l'etat du checkpointer + le nouveau message
+        assert "ancien fil" in seen_by_classifier
+        assert "nouvelle question" in seen_by_classifier
+
+    def test_sans_thread_id_historique_complet(self, monkeypatch):
+        from langchain_core.messages import HumanMessage
+        import fdn_bot.agent as agent_mod
+
+        captured = {}
+        self._capture_agent(monkeypatch, {}, captured)
+        messages = [HumanMessage(content="q1"), HumanMessage(content="q2")]
+        agent_mod.respond_with_meta(
+            messages, classify_fn=lambda m: guard.TopicClassification(in_scope=True)
+        )
+        assert len(captured["payload"]["messages"]) == 2
+        assert "configurable" not in captured["config"]
 
 
 class TestGardeFouDomaine:

@@ -39,6 +39,22 @@ L'agent est assemblé avec `create_agent` (API LangChain 1.x) autour de deux out
 Le prompt système impose de sourcer toute réponse sur FDN vers fdn.fr et de
 citer les URLs consultées.
 
+## Mémoire de conversation
+
+Mémoire serveur gérée par LangChain/LangGraph : `create_agent` est compilé
+avec un checkpointer `InMemorySaver` (partagé au niveau process), et chaque
+fil est identifié par un `thread_id` envoyé par le frontend.
+
+- Thread connu du checkpointer : seul le dernier message est envoyé à
+  l'agent (l'historique vit dans l'état du graph), et le garde-fou
+  classifie au vu de l'état du fil — une question de suivi (« et le
+  prix ? ») hérite donc du sujet du fil.
+- Thread inconnu (instance froide du serverless) : l'historique complet
+  fourni par le client re-sème le fil.
+- Sans `thread_id` : comportement historique (l'historique client fait foi).
+
+Voir `fdn_bot/agent.py` (`respond_with_meta`) et `fdn_bot/guard.py`.
+
 ## Garde-fous (périmètre et usage des outils)
 
 Avant chaque question, un contrôle léger (`fdn_bot/guard.py`, Mistral Small,

@@ -38,6 +38,9 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(default_factory=list)
+    # Identifiant du fil : active la memoire serveur (checkpointer InMemorySaver).
+    # Sans thread_id, l'historique complet fourni sert de conversation.
+    thread_id: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -93,7 +96,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        meta = respond_with_meta(messages)
+        meta = respond_with_meta(messages, thread_id=request.thread_id)
         return ChatResponse(answer=meta["answer"], search_used=meta["search_used"])
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Erreur de l'agent : {exc}") from exc

@@ -87,8 +87,10 @@ def _transcript(messages: list) -> str:
             continue
         content = message.content
         text = content if isinstance(content, str) else str(content)
-        snippet = " ".join(text.split())[:300]
-        lines.append(f"{role} : {snippet}")
+        text = " ".join(text.split())
+        if not text:
+            continue  # messages intermediaires (tool calls vides)
+        lines.append(f"{role} : {text[:300]}")
     return "\n".join(lines)
 
 

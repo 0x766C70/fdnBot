@@ -1,10 +1,17 @@
-"""Assemblage et exécution de l'agent FDN (LangChain 1.x, create_agent)."""
+"""Assemblage et exécution de l'agent FDN (LangChain 1.x, create_agent).
+
+Mémoire de conversation : checkpointer LangGraph InMemorySaver, indexé par
+thread_id (l'état du fil persiste entre les appels de l'instance serveur).
+Sur serverless, une instance frode repart à vide : l'appelant transmet
+alors l'historique complet, qui re-seme le thread au besoin.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
 
 from fdn_bot import guard
 from fdn_bot.llm import get_chat_model
@@ -13,6 +20,10 @@ from fdn_bot.tools import SEARCH_TOOL_NAME, build_search_tool, read_fdn_page
 
 RECURSION_LIMIT = 25
 SEARCH_TOOL_NAMES = {SEARCH_TOOL_NAME, "read_fdn_page"}
+
+# Checkpointer partagé par tous les agents du process : c'est lui qui porte
+# la mémoire des fils entre les requêtes.
+CHECKPOINTER = InMemorySaver()
 
 
 def build_agent(include_search: bool = True):
@@ -26,6 +37,7 @@ def build_agent(include_search: bool = True):
         get_chat_model(),
         tools,
         system_prompt=SYSTEM_PROMPT,
+        checkpointer=CHECKPOINTER,
         name="fdn_expert",
     )
 
@@ -54,19 +66,44 @@ def _search_used(result_messages: list) -> bool:
     return False
 
 
+def _thread_state_messages(agent: Any, thread_id: str) -> list:
+    """Messages connus du checkpointer pour ce thread (vide si thread neuf)."""
+    try:
+        state = agent.get_state({"configurable": {"thread_id": thread_id}})
+    except Exception:  # noqa: BLE001
+        return []
+    values = getattr(state, "values", None) or {}
+    return list(values.get("messages", []))
+
+
 def respond_with_meta(
     messages: list,
+    thread_id: Optional[str] = None,
     classify_fn: guard.ClassifyFn = guard.classify_thread,
 ) -> dict:
     """Point d'entrée unique : applique les garde-fous puis exécute l'agent.
 
-    Retourne {"answer": str, "refused": bool, "search_used": bool}."""
+    Retourne {"answer": str, "refused": bool, "search_used": bool}.
+
+    thread_id : active la memoire serveur (InMemorySaver). Si le thread
+    est deja connu du checkpointer, seul le dernier message est envoye a
+    l'agent (l'historique vit dans l'etat du graph) et le garde-fou
+    classifie au vu de l'etat du fil. Sinon, l'historique complet fourni
+    re-seme le thread (cas des instances froides du serverless).
+    """
     question = guard.last_question(messages)
     if question is None:
         return {"answer": "Posez-moi une question d'IT ou sur FDN.", "refused": True, "search_used": False}
 
+    # Le garde-fou doit voir la memoire serveur du fil, pas seulement le
+    # nouveau message : on lui presente l'etat du checkpointer + le message.
+    prior_messages: list = []
+    if thread_id:
+        prior_messages = _thread_state_messages(build_agent(), thread_id)
+    classify_messages = prior_messages + messages
+
     try:
-        classification = classify_fn(messages)
+        classification = classify_fn(classify_messages)
     except Exception:  # noqa: BLE001 - échec du filtre : on laisse répondre
         classification = guard.TopicClassification(in_scope=True, needs_fdn_facts=True)
 
@@ -74,9 +111,20 @@ def respond_with_meta(
         return {"answer": guard.REFUSAL, "refused": True, "search_used": False}
 
     agent = build_agent(include_search=classification.needs_fdn_facts)
-    result = agent.invoke(
-        {"messages": messages}, config={"recursion_limit": RECURSION_LIMIT}
-    )
+
+    if thread_id:
+        config = {
+            "recursion_limit": RECURSION_LIMIT,
+            "configurable": {"thread_id": thread_id},
+        }
+        # Instance qui connait deja le fil -> seul le nouveau message suffit.
+        payload = {"messages": messages[-1:]} if prior_messages else {"messages": messages}
+        result = agent.invoke(payload, config)
+    else:
+        result = agent.invoke(
+            {"messages": messages}, config={"recursion_limit": RECURSION_LIMIT}
+        )
+
     return {
         "answer": _extract_text(result["messages"][-1]),
         "refused": False,
@@ -84,6 +132,10 @@ def respond_with_meta(
     }
 
 
-def respond(messages: list, classify_fn: guard.ClassifyFn = guard.classify_thread) -> str:
+def respond(
+    messages: list,
+    thread_id: Optional[str] = None,
+    classify_fn: guard.ClassifyFn = guard.classify_thread,
+) -> str:
     """Version simple de respond_with_meta, pour la CLI et l'API legacy."""
-    return respond_with_meta(messages, classify_fn)["answer"]
+    return respond_with_meta(messages, thread_id, classify_fn)["answer"]
