@@ -15,6 +15,7 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 from fdn_bot import guard
+from fdn_bot.format import strip_markdown
 from fdn_bot.llm import get_chat_model
 from fdn_bot.prompts import SYSTEM_PROMPT
 from fdn_bot.tools import SEARCH_TOOL_NAME, build_search_tool, read_fdn_page
@@ -133,7 +134,8 @@ def respond_with_meta(
     result = agent.invoke(payload, config)
 
     return {
-        "answer": _extract_text(result["messages"][-1]),
+        # texte brut garanti : ni le front ni la CLI n'interprètent le markdown
+        "answer": strip_markdown(_extract_text(result["messages"][-1])),
         "refused": False,
         "search_used": _search_used(result["messages"]),
     }

@@ -18,7 +18,64 @@ sys.path.insert(0, str(ROOT / "api"))
 
 from fdn_bot import guard
 from fdn_bot.agent import respond_with_meta
+from fdn_bot.format import strip_markdown
 from fdn_bot.tools import is_fdn_url  # noqa: E402
+
+
+class TestStripMarkdown:
+    """Les réponses partent en texte brut : le markdown est nettoyé."""
+
+    def test_gras_italique_titres(self):
+        src = "### Les offres\n\n**FDN**, c'est *chouette*."
+        assert strip_markdown(src) == "Les offres\n\nFDN, c'est chouette."
+
+    def test_bloc_code_epuice_contenu_conserve(self):
+        src = "Voici :\n```bash\nsudo apt install tuto\n```\nFin."
+        assert strip_markdown(src) == "Voici :\nsudo apt install tuto\nFin."
+
+    def test_code_inline_contenu_verbatim(self):
+        src = "édite le fichier `resolv.conf`, le joker `*` du shell."
+        assert strip_markdown(src) == "édite le fichier resolv.conf, le joker * du shell."
+
+    def test_liens_texte_et_url(self):
+        src = "voir [l'offre fibre](https://www.fdn.fr/offre/) vite"
+        assert strip_markdown(src) == "voir l'offre fibre (https://www.fdn.fr/offre/) vite"
+
+    def test_puces_homogeneisees(self):
+        src = "* première\n* seconde\n+ troisième"
+        assert strip_markdown(src) == "- première\n- seconde\n- troisième"
+
+    def test_identifiants_underscores_preserves(self):
+        src = "les méthodes __init__ et noms snake_case restent intacts"
+        assert strip_markdown(src) == src
+
+    def test_citation_et_filet(self):
+        src = "> citation utile\n\n---\n\nSuite du texte"
+        assert strip_markdown(src) == "citation utile\n\nSuite du texte"
+
+    def test_tableau_deplie(self):
+        src = "| Offre | Prix |\n|---|---|\n| ADSL | 20 € |"
+        assert strip_markdown(src) == "Offre   Prix\nADSL   20 €"
+
+    def test_agent_passe_par_le_nettoyage(self, monkeypatch):
+        from langchain_core.messages import AIMessage, HumanMessage
+        import fdn_bot.agent as agent_mod
+
+        class FakeAgent:
+            def get_state(self, config):
+                class State:
+                    values = {}
+                return State()
+
+            def invoke(self, state, config=None):
+                return {"messages": [AIMessage(content="**FDN** répond `vite`.")]}
+
+        monkeypatch.setattr("fdn_bot.agent.build_agent", lambda **kw: FakeAgent())
+        meta = agent_mod.respond_with_meta(
+            [HumanMessage(content="question")],
+            classify_fn=lambda m: guard.TopicClassification(in_scope=True),
+        )
+        assert meta["answer"] == "FDN répond vite."
 
 
 class TestGardeFou:
