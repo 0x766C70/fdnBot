@@ -857,6 +857,7 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-mistralai" },
     { name = "langchain-tavily" },
+    { name = "langsmith" },
     { name = "pypdf" },
     { name = "python-dotenv" },
 ]
@@ -898,6 +899,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=1.3.10" },
     { name = "langchain-mistralai", specifier = ">=1.1.6" },
     { name = "langchain-tavily", specifier = ">=0.2.13" },
+    { name = "langsmith", specifier = ">=0.14.14" },
     { name = "pypdf", specifier = ">=6.13.3" },
     { name = "python-dotenv", specifier = ">=1.2.0" },
 ]

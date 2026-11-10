@@ -120,6 +120,13 @@ def respond_with_meta(
     config = {
         "recursion_limit": RECURSION_LIMIT,
         "configurable": {"thread_id": thread_id},
+        # Observabilite LangSmith : filtration possible par thread et par
+        # armement de la recherche dans l'interface smith.langchain.com
+        "metadata": {
+            "thread_id": thread_id,
+            "search_armed": classification.needs_fdn_facts,
+        },
+        "tags": ["fdnbot", "botbot"],
     }
     # Instance qui connait deja le fil -> seul le nouveau message suffit.
     payload = {"messages": messages[-1:]} if prior_messages else {"messages": messages}

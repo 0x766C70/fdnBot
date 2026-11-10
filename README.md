@@ -66,6 +66,37 @@ sortie structurée) décide :
    que si la question exige des faits précis propres à FDN. Pour l'IT générale,
    l'agent répond directement, sans appel Tavily — plus rapide et plus économe.
 
+## Observabilité (LangSmith)
+
+Toutes les exécutions de l'agent (appels Mistral, appels d'outils Tavily,
+garde-fou) sont tracées dans LangSmith dès que `LANGSMITH_TRACING=true`
+et `LANGSMITH_API_KEY` sont définis — c'est l'instrumentation native de
+LangChain, sans code dédié. Chaque run d'agent embarque :
+
+- `tags` : `fdnbot`, `botbot`
+- `metadata.thread_id` : le fil de conversation (suivi multi-tours)
+- `metadata.search_armed` : si la recherche *.fdn.fr était autorisée
+
+Variables (locales : `.env` ; production : Settings -> Environment
+Variables du projet Vercel) :
+
+```
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_PROJECT=fdnbot          # optionnel
+LANGSMITH_ENDPOINT=...            # optionnel (instance EU)
+```
+
+Attention : ne définissez PAS `LANGSMITH_AGENT_ID` ni
+`LANGSMITH_AGENT_ENVIRONMENT` (variables du cours LangChain Academy) :
+leur « adresse » d'agent entre en conflit avec le projet LangSmith et
+les traces ne partent plus (« calls that name no destination in code
+are not traced »).
+
+Les traces sont ensuite consultables sur smith.langchain.com, filtrables
+par thread ou par armement de recherche (dans un run : chercher
+`thread_id`, ou comparer les runs `search_armed=false` vs `true`).
+
 ## Développement local
 
 ```bash
